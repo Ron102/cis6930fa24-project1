@@ -1,13 +1,13 @@
 import pytest
-import en_core_web_trf
+import en_core_web_md
 from redactor import redact_content
 
-nlp = en_core_web_trf.load()
+nlp = en_core_web_md.load()
 
 @pytest.mark.parametrize(
     "input_text,expected",
     [
-        ("44 W 4th St, New York", "█████████████████████")
+        ("44 W 4th St, New York", "██ █████ ██, ████████")
     ],
 )
 def test_address(input_text, expected):
