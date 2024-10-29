@@ -135,7 +135,13 @@ def fileprocessor(args):
             sys.exit(f"No files found")
         all_file_paths.extend(file_paths)
 
-    nlp = en_core_web_trf.load()
+    try:
+        nlp = en_core_web_trf.load()
+    except OSError:
+        from spacy.cli import download
+        download("en_core_web_trf")
+        nlp = en_core_web_trf.load()
+        
     label_mapping = {
         "NORP": "Nationalities or Religious or Political Groups",
         "GPE": "Geopolitical Entities",
