@@ -5,11 +5,10 @@ name = "pypi"
 
 [packages]
 spacy = "*"
-spacy-transformers = "*"
 nltk = "*"
 pytest = "*"
 usaddress = "*"
-
+en-core-web-trf = {file = "https://huggingface.co/spacy/en_core_web_trf/resolve/main/en_core_web_trf-any-py3-none-any.whl"}
 
 [dev-packages]
 
