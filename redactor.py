@@ -5,11 +5,10 @@ import glob
 import re
 import json
 from pprint import pformat
-import en_core_web_trf
+import en_core_web_md
 import usaddress
 import nltk
 from nltk.corpus import wordnet as wn
-
 
 nltk.download('wordnet')
 nltk.download('omw-1.4')
@@ -135,13 +134,8 @@ def fileprocessor(args):
             sys.exit(f"No files found")
         all_file_paths.extend(file_paths)
 
-    try:
-        nlp = en_core_web_trf.load()
-    except OSError:
-        from spacy.cli import download
-        download("en_core_web_trf")
-        nlp = en_core_web_trf.load()
-        
+    nlp = en_core_web_md.load()
+
     label_mapping = {
         "NORP": "Nationalities or Religious or Political Groups",
         "GPE": "Geopolitical Entities",
