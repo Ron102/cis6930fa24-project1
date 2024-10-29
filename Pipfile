@@ -6,10 +6,10 @@ name = "pypi"
 [packages]
 spacy = "*"
 spacy-transformers = "*"
-en-core-web-trf = {url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.5.0/en_core_web_trf-3.5.0.tar.gz"}
 nltk = "*"
 pytest = "*"
 usaddress = "*"
+
 
 [dev-packages]
 
