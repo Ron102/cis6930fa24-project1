@@ -1,9 +1,9 @@
 import pytest
 import spacy
-import en_core_web_md
+import en_core_web_trf
 from redactor import redact_content
 
-nlp = en_core_web_md.load()
+nlp = en_core_web_trf.load()
 
 @pytest.mark.parametrize(
     "input_text,expected",

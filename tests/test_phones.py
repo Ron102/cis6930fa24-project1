@@ -1,19 +1,9 @@
 import pytest
 import spacy
-import en_core_web_md
+import en_core_web_trf
 from redactor import redact_content
 
-nlp = en_core_web_md.load()
-
-@pytest.mark.parametrize(
-    "input_text,expected",
-    [
-        ("My number is 1234567889", "My number is ██████████")
-    ],
-)
-def test_all(input_text, expected):
-    redacted_content, stats_output = redact_content(input_text, nlp, labels)
-    assert redacted_content == expected
+nlp = en_core_web_trf.load()
 
 labels = {
     "NORP": "Nationalities or Religious or Political Groups",
@@ -37,3 +27,13 @@ labels = {
     "PHONE": "Phone Numbers",
     "EMAIL": "Email IDs",
 }
+
+@pytest.mark.parametrize(
+    "input_text,expected",
+    [
+        ("My number is (123) 456-7889", "My number is █████ ████████")
+    ],
+)
+def test_all(input_text, expected):
+    redacted_content, stats_output = redact_content(input_text, nlp, labels, redact_phones=True)
+    assert redacted_content == expected
