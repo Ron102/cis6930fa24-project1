@@ -160,7 +160,7 @@ _arg_pass()_ - This function accepts command-line arguments for each flag as men
 *redact_content()* - This function uses regex to identify the patterns of mobile, email and name patterns. The emails contain sections called X_Folder and X_Origin, which contains names of people sending the emails. These identified texts are then redacted.
 
 
-*fileprocessor()* - This function inputs arguments from arg_parse() and uses the redact_content() function to redact contents. It also deals with the stderr and stdout arg stats, and checks if the file path/glob pattern is correct/found, and uses the en_core_web_trf package from spacy-transformers to get statistics of each individual file by counting the number of instances of each flag, writing it to a file specified by output or stdout or stderr.
+*filehandler()* - This function inputs arguments from arg_parse() and uses the redact_content() function to redact contents. It also deals with the stderr and stdout arg stats, and checks if the file path/glob pattern is correct/found, and uses the en_core_web_trf package from spacy-transformers to get statistics of each individual file by counting the number of instances of each flag, writing it to a file specified by output or stdout or stderr.
 
   
 
