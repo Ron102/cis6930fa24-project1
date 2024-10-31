@@ -28,46 +28,42 @@ def arg_pass():
     parser.add_argument("--stats", required=True, type=str, help="File to write statistics. Use 'stdout' or 'stderr' to print to console, or specify file path.",)
     return parser.parse_args()
 
-def get_synonyms(concept):
+def fetch_synonyms(concept):
     synonyms = set()
-    for syn in wn.synsets(concept):
-        for lemma in syn.lemmas():
-            synonyms.add(lemma.name()) 
+    for i in wn.synsets(concept):
+        for j in i.lemmas():
+            synonyms.add(j.name()) 
 
     stemmer = PorterStemmer()
-    derivational_forms = get_derivational_forms(concept)
+    forms = derivational_forms(concept)
 
-    all_related_words = {stemmer.stem(word) for word in synonyms.union(derivational_forms)}
-    return all_related_words
+    relwords = {stemmer.stem(word) for word in synonyms.union(forms)}
+    return relwords
 
 
-def get_derivational_forms(word):
+def derivational_forms(word):
     lemmatizer = WordNetLemmatizer()
     stemmer = PorterStemmer()
-    suffixes = ['ing', 'ed', 's', 'es', 'ly', 'ness', 'ment', 'tion']
+    endings = ['ing', 'ed', 's', 'es', 'ly', 'ness', 'ment', 'tion']
     derivations = set()
-
     derivations.add(word)
     derivations.add(lemmatizer.lemmatize(word))
     derivations.add(stemmer.stem(word))
 
-    for suffix in suffixes:
-        derivations.add(word + suffix)
+    for ending in endings:
+        derivations.add(word + ending)
     
     return derivations
 
-def redact_related_sentences(content, concepts, entity_counts):
+def sentence_redact(content, concepts, entity_counts):
     stemmer = PorterStemmer()
-    
     for con in concepts:
-        all_related_words = get_synonyms(con)
+        relwords = fetch_synonyms(con)
         count = 0
         sentences = re.split(r'(?<=[.!?])\s+', content)
-        
         for j, sentence in enumerate(sentences):
-            # Use stemmed words to find any derivational match in the sentence
-            sentence_stems = [stemmer.stem(word) for word in sentence.split()]
-            if any(word in sentence_stems for word in all_related_words):
+            stems = [stemmer.stem(w) for w in sentence.split()]
+            if any(w in stems for w in relwords):
                 sentences[j] = "█" * len(sentence)
                 count += 1
 
@@ -78,70 +74,70 @@ def redact_related_sentences(content, concepts, entity_counts):
 
 def redact_addresses(content, entity_counts):
     tokens = content.split()
-    redacted_content = []
+    redacted = []
     i = 0
     count = 0
     while i < len(tokens):
         addr_chunk = " ".join(tokens[i:i+6])
         try:
-            tag_address, _ = usaddress.tag(addr_chunk)
-            if 'AddressNumber' in tag_address or 'PlaceName' in tag_address:
-                redacted_content.append("█" * len(addr_chunk))
+            addr, _ = usaddress.tag(addr_chunk)
+            if 'AddressNumber' in addr or 'PlaceName' in addr:
+                redacted.append("█" * len(addr_chunk))
                 count += 1
                 i += 6
                 continue
         except usaddress.RepeatedLabelError:
             pass
-        redacted_content.append(tokens[i])
+        redacted.append(tokens[i])
         i += 1
 
     entity_counts["ADDRESS"] = count
-    return " ".join(redacted_content)
+    return " ".join(redacted)
 
-def redact_content(content, nlp, label_mapping, redact_names=False, redact_dates=False, redact_phones=False, redact_address=False, concepts=None):
-    mobile_pattern = r"(?:\+1\s*)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}"
-    email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
-    address_pattern = r"\d+\s[A-Za-z0-9\s,]+"
+def redact_content(content, nlp, labels, redact_names=False, redact_dates=False, redact_phones=False, redact_address=False, concepts=None):
+    phone_pat = r"(?:\+1\s*)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}"
+    email_pat = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
+    addr_pat = r"\d+\s[A-Za-z0-9\s,]+"
 
     entity_counts = {}
 
     if concepts:
-        content = redact_related_sentences(content, concepts, entity_counts)
+        content = sentence_redact(content, concepts, entity_counts)
 
     if redact_address:
-        addresses = re.findall(address_pattern, content)
+        addresses = re.findall(addr_pat, content)
         for address in addresses:
             content = content.replace(address, "█" * len(address))
         entity_counts["ADDRESS"] = len(addresses)
 
     doc = nlp(content)
-    entities_sorted = sorted(doc.ents, key=lambda ent: ent.start_char, reverse=True)
+    sorted_ent = sorted(doc.ents, key=lambda ent: ent.start_char, reverse=True)
 
-    for ent in entities_sorted:
+    for ent in sorted_ent:
         blackout_length = len(ent.text)
         blackout_text = "█" * blackout_length
         content = content[:ent.start_char] + blackout_text + content[ent.end_char:]
-        if ent.label_ in label_mapping:
-            entity_counts[label_mapping[ent.label_]] = entity_counts.get(label_mapping[ent.label_], 0) + 1
+        if ent.label_ in labels:
+            entity_counts[labels[ent.label_]] = entity_counts.get(labels[ent.label_], 0) + 1
 
     if redact_phones:
-        phone_nums = re.findall(mobile_pattern, content)
+        phone_nums = re.findall(phone_pat, content)
         for phone in phone_nums:
             content = re.sub(re.escape(phone), "█" * len(phone), content)
         entity_counts["PHONE"] = len(phone_nums)
 
-    email_IDs = re.findall(email_pattern, content)
-    for email in email_IDs:
+    emails = re.findall(email_pat, content)
+    for email in emails:
         content = content.replace(email, "█" * len(email))
-    entity_counts["EMAIL"] = len(email_IDs)
+    entity_counts["EMAIL"] = len(emails)
 
     intuitive_entity_counts = {
-        label_mapping.get(key, key): value for key, value in entity_counts.items()
+        labels.get(key, key): value for key, value in entity_counts.items()
     }
 
     return content, intuitive_entity_counts
 
-def fileprocessor(args):
+def filehandler(args):
     abspathsIP = [os.path.abspath(path) for path in args.input]
     abspathsOP = os.path.abspath(args.output)
     if args.stats != "stderr" and args.stats != "stdout":
@@ -156,7 +152,7 @@ def fileprocessor(args):
 
     nlp = en_core_web_trf.load()
 
-    label_mapping = {
+    labels = {
         "NORP": "Nationalities or Religious or Political Groups",
         "GPE": "Geopolitical Entities",
         "FAC": "Facilities",
@@ -184,14 +180,14 @@ def fileprocessor(args):
 
     for path in all_file_paths:
         with open(path, "r", encoding="utf-8") as file:
-            content_lines = file.readlines()
+            content = file.readlines()
             redacted_lines = []
             stats_output = {}
 
-            for line in content_lines:
+            for l in content:
                 Redacted_line, line_stats = redact_content(
-                    line.strip(),
-                    nlp, label_mapping,
+                    l.strip(),
+                    nlp, labels,
                     redact_names=args.names,
                     redact_dates=args.dates,
                     redact_phones=args.phones,
@@ -205,8 +201,7 @@ def fileprocessor(args):
 
         output_path = os.path.join(args.output, os.path.basename(path) + ".censored")
         with open(output_path, "w", encoding="utf-8") as outfile:
-            for redacted_line in redacted_lines:
-                outfile.write(redacted_line + "\n")
+            for redacted_line in redacted_lines: outfile.write(redacted_line + "\n")
 
         stats = pformat(stats_output)
         fileMode = "w" if not os.path.exists(args.stats) else "a"
@@ -230,7 +225,7 @@ def fileprocessor(args):
 
 def main():
     args = arg_pass()
-    fileprocessor(args)
+    filehandler(args)
 
 if __name__ == "__main__":
     main()
